@@ -134,16 +134,22 @@ For each tool, describe the specific failure mode you're handling and what the a
 
 Write out what a full user interaction looks like from start to finish — tool call by tool call. Use a specific example query.
 
+FitFindr is an AI agent that takes a user's natural language request to search for secondhand clothing, finds matching items, and suggests how to style them using the user's existing wardrobe. It sequentially triggers three tools: searching for listings based on the parsed query, generating an outfit recommendation using the found item, and creating a social media fit card. If a tool fails (such as finding zero search results), the agent gracefully halts the process and returns a helpful error message to the user instead of proceeding with empty data.
+
 **Example user query:** "I'm looking for a vintage graphic tee under $30. I mostly wear baggy jeans and chunky sneakers. What's out there and how would I style it?"
 
 **Step 1:**
 <!-- What does the agent do first? Which tool is called? With what input? -->
+The agent parses the user's query and calls the `search_listings` tool with `description="vintage graphic tee"` and `max_price=30.0`. If no items match, it stops the interaction and returns an error message. If items match, it returns a list of results and selects the top match.
 
 **Step 2:**
 <!-- What happens next? What was returned from step 1? What tool is called now? -->
+Using the top match from Step 1, the agent calls the `suggest_outfit` tool, passing the selected item and the user's wardrobe data. It returns an outfit suggestion string. If the user's wardrobe is empty, it handles this gracefully by returning general styling advice instead.
 
 **Step 3:**
 <!-- Continue until the full interaction is complete -->
+The agent calls the `create_fit_card` tool, passing the outfit string from Step 2 and the selected item details. It returns a short, shareable social media caption. If the outfit data is missing or incomplete, it returns a descriptive error message instead of crashing.
 
 **Final output to user:**
 <!-- What does the user actually see at the end? -->
+The user sees three distinct outputs: the details of the top listing found, the customized outfit idea incorporating their wardrobe items, and a catchy 2-4 sentence "fit card" caption ready for social media.
