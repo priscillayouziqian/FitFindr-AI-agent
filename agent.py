@@ -19,6 +19,7 @@ Usage (once implemented):
 """
 
 from tools import search_listings, suggest_outfit, create_fit_card
+import re
 
 
 # ── session state ─────────────────────────────────────────────────────────────
@@ -92,9 +93,49 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     Before writing code, complete the Planning Loop and State Management sections
     of planning.md — your implementation should match what you described there.
     """
-    # TODO: implement the planning loop
     session = _new_session(query, wardrobe)
-    session["error"] = "Planning loop not yet implemented."
+
+    # Step 2: 解析用户的查询 (Parse the user's query using Regular Expressions)
+    # 提取最高价格 (Extract max_price, e.g., "$30", "under $30")
+    max_price = None
+    price_match = re.search(r'\$\s*(\d+(?:\.\d{2})?)', query)
+    if price_match:
+        max_price = float(price_match.group(1))
+
+    # 提取尺寸 (Extract size, e.g., "size M", "size s/m")
+    size = None
+    size_match = re.search(r'size\s+([a-zA-Z0-9/]+)', query, re.IGNORECASE)
+    if size_match:
+        size = size_match.group(1).upper()
+
+    # 清理查询字符串，留下纯净的衣服描述 (Clean up the query to use as the description)
+    description = query.lower()
+    description = re.sub(r'(under\s*)?\$\s*\d+(?:\.\d{2})?', '', description)
+    description = re.sub(r'(in\s*)?size\s+[a-zA-Z0-9/]+', '', description)
+    description = description.replace("looking for", "").replace("a ", "").strip(' ,.')
+
+    session["parsed"] = {
+        "description": description,
+        "size": size,
+        "max_price": max_price
+    }
+
+    # Step 3: 调用 Tool 1 (Call search_listings with parsed parameters)
+    results = search_listings(description=description, size=size, max_price=max_price)
+    session["search_results"] = results
+
+    if not results:
+        # 核心逻辑：如果没有匹配项，立刻停止并返回错误信息！(Halt interaction gracefully if no results)
+        session["error"] = "Sorry, I couldn't find any items matching your filters. Try adjusting your description or price!"
+        return session
+
+    # Step 4: 选出最佳匹配项 (Select the top item)
+    session["selected_item"] = results[0]
+
+    # Step 5 & 6: 依次调用后续工具 (Trigger the remaining tools using the session state)
+    session["outfit_suggestion"] = suggest_outfit(session["selected_item"], session["wardrobe"])
+    session["fit_card"] = create_fit_card(session["outfit_suggestion"], session["selected_item"])
+
     return session
 
 

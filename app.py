@@ -43,8 +43,31 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
            string and return it along with session["outfit_suggestion"] and
            session["fit_card"].
     """
-    # TODO: implement this function
-    return "Agent not yet implemented.", "", ""
+    # 1. 拦截空查询 (Guard against an empty query)
+    if not user_query or not user_query.strip():
+        return "⚠️ Please enter a description of what you are looking for.", "", ""
+
+    # 2. 根据用户选择加载衣橱 (Select the wardrobe based on wardrobe_choice)
+    if wardrobe_choice == "Example wardrobe":
+        wardrobe = get_example_wardrobe()
+    else:
+        wardrobe = get_empty_wardrobe()
+
+    # 3. 呼叫 Agent 大脑！(Call run_agent() with the query and selected wardrobe)
+    session = run_agent(query=user_query, wardrobe=wardrobe)
+
+    # 4. 如果发生错误，只在第一个面板显示错误信息 (Handle early termination / error)
+    if session.get("error"):
+        return f"❌ {session['error']}", "", ""
+
+    # 5. 格式化商品信息并返回三个面板的内容 (Format the successful output)
+    item = session["selected_item"]
+    price_raw = item.get('price')
+    price_str = f"${price_raw:.2f}" if isinstance(price_raw, (float, int)) else price_raw
+    
+    listing_text = f"**{item.get('title')}**\n\n💰 Price: {price_str}\n🏷️ Size: {item.get('size', 'N/A')}\n🛒 Platform: {item.get('platform')}\n\n{item.get('description')}"
+    
+    return listing_text, session.get("outfit_suggestion", ""), session.get("fit_card", "")
 
 
 # ── interface ─────────────────────────────────────────────────────────────────
