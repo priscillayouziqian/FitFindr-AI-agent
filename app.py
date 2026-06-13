@@ -65,8 +65,12 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
     price_raw = item.get('price')
     price_str = f"${price_raw:.2f}" if isinstance(price_raw, (float, int)) else price_raw
     
-    # 将标题转为大写，并去除无法在 Textbox 中渲染的 Markdown 加粗符号
-    listing_text = f"✨ {item.get('title', '').upper()} ✨\n\n💰 Price: {price_str}\n🏷️ Size: {item.get('size', 'N/A')}\n🛒 Platform: {item.get('platform')}\n\n{item.get('description')}"
+    listing_text = ""
+    # 如果触发了重试逻辑，在开头加上提示语
+    if session.get("fallback_message"):
+        listing_text += f"⚠️ **Note:** {session['fallback_message']}\n\n"
+
+    listing_text += f"✨ {item.get('title', '').upper()} ✨\n\n💰 Price: {price_str}\n🏷️ Size: {item.get('size', 'N/A')}\n🛒 Platform: {item.get('platform')}\n\n{item.get('description')}"
     
     return listing_text, session.get("outfit_suggestion", ""), session.get("fit_card", "")
 

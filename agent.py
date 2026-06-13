@@ -42,6 +42,7 @@ def _new_session(query: str, wardrobe: dict) -> dict:
         "wardrobe": wardrobe,        # user's wardrobe dict
         "outfit_suggestion": None,   # string returned by suggest_outfit
         "fit_card": None,            # string returned by create_fit_card
+        "fallback_message": None,    # message explaining relaxed constraints
         "error": None,               # set if the interaction ended early
     }
 
@@ -125,12 +126,20 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
     # Step 3: 调用 Tool 1 (Call search_listings with parsed parameters)
     results = search_listings(description=description, size=size, max_price=max_price)
-    session["search_results"] = results
 
     if not results:
-        # 核心逻辑：如果没有匹配项，立刻停止并返回错误信息！(Halt interaction gracefully if no results)
-        session["error"] = "Sorry, I couldn't find any items matching your filters. Try adjusting your description or price!"
+        # 放宽条件重试逻辑 (Retry Logic with Fallback)
+        if max_price is not None or size is not None:
+            results = search_listings(description=description, size=None, max_price=None)
+            if results:
+                session["fallback_message"] = "I couldn't find an exact match for your price/size, but I removed those filters to find this for you!"
+
+    if not results:
+        # 如果放宽条件后依然没有匹配项，立刻停止并返回错误！(Halt interaction gracefully if still no results)
+        session["error"] = "Sorry, I couldn't find any items matching your description. Try different keywords!"
         return session
+
+    session["search_results"] = results
 
     # Step 4: 选出最佳匹配项 (Select the top item)
     session["selected_item"] = results[0]
@@ -166,3 +175,12 @@ if __name__ == "__main__":
         wardrobe=get_example_wardrobe(),
     )
     print(f"Error message: {session2['error']}")
+
+    print("\n\n=== Retry with fallback path ===\n")
+    session3 = run_agent(
+        query="vintage graphic tee under $5",
+        wardrobe=get_example_wardrobe(),
+    )
+    print(f"Fallback message: {session3.get('fallback_message')}")
+    if session3.get("selected_item"):
+        print(f"Found: {session3['selected_item']['title']} (Price: ${session3['selected_item']['price']})")

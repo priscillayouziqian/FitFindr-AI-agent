@@ -50,6 +50,13 @@ State is managed using a single `session` dictionary that acts as the Single Sou
 
 ---
 
+## ✨ Bonus Features Implemented
+
+### 1. Retry Logic with Fallback
+If a user's initial search yields zero results because their constraints (`max_price` or `size`) are too strict, the agent does not immediately fail. Instead, it automatically drops those optional constraints and runs the search again. If this fallback search finds a match, the agent gracefully presents the item along with a warning message (e.g., *"I couldn't find an exact match for your price/size, but I removed those filters to find this for you!"*), explaining to the user exactly what was adjusted.
+
+---
+
 ## 📝 Spec Reflection
 
 Completing the `planning.md` before writing code was a game-changer. Drawing the Mermaid architecture diagram forced me to think about the "early return" branch (what happens if Tool 1 fails) *before* I even wrote the `agent.py` loop. Because I explicitly defined the failure modes on paper, my agent avoided the classic trap of passing `None` values into an LLM and crashing. It made writing the automated `pytest` cases incredibly straightforward since I already knew my expected edge cases.
