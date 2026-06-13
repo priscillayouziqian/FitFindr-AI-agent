@@ -18,7 +18,7 @@ Usage (once implemented):
     print(result["error"])   # None on success
 """
 
-from tools import search_listings, suggest_outfit, create_fit_card
+from tools import search_listings, suggest_outfit, create_fit_card, compare_price
 import re
 
 
@@ -39,6 +39,7 @@ def _new_session(query: str, wardrobe: dict) -> dict:
         "parsed": {},                # extracted description / size / max_price
         "search_results": [],        # list of matching listing dicts
         "selected_item": None,       # top result, passed into suggest_outfit
+        "price_comparison": None,    # string returned by compare_price
         "wardrobe": wardrobe,        # user's wardrobe dict
         "outfit_suggestion": None,   # string returned by suggest_outfit
         "fit_card": None,            # string returned by create_fit_card
@@ -143,6 +144,9 @@ def run_agent(query: str, wardrobe: dict) -> dict:
 
     # Step 4: 选出最佳匹配项 (Select the top item)
     session["selected_item"] = results[0]
+
+    # Step 4.5: 进行价格对比评估 (Bonus: Compare price)
+    session["price_comparison"] = compare_price(session["selected_item"])
 
     # Step 5 & 6: 依次调用后续工具 (Trigger the remaining tools using the session state)
     session["outfit_suggestion"] = suggest_outfit(session["selected_item"], session["wardrobe"])

@@ -245,3 +245,37 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     )
 
     return response.choices[0].message.content.strip()
+
+
+# ── Tool 4: compare_price (Bonus Feature) ─────────────────────────────────────
+
+def compare_price(new_item: dict) -> str:
+    """
+    Compare the price of the selected item against similar items in the dataset
+    to assess if it's a good deal.
+    """
+    listings = load_listings()
+    category = new_item.get("category")
+    item_id = new_item.get("id")
+    item_price = new_item.get("price", 0)
+
+    # Find comparables: same category, exclude the item itself
+    comparables = [
+        item for item in listings 
+        if item.get("category") == category and item.get("id") != item_id and "price" in item
+    ]
+
+    if not comparables:
+        return "Price Assessment: No comparable items found to assess the price."
+
+    prices = [item["price"] for item in comparables]
+    avg_price = sum(prices) / len(prices)
+
+    if item_price < avg_price * 0.85:
+        assessment = "an absolute steal (well below average)!"
+    elif item_price > avg_price * 1.15:
+        assessment = "priced slightly above average."
+    else:
+        assessment = "a fair price (around market average)."
+
+    return f"📊 **Price Assessment:** At ${item_price:.2f}, this is {assessment} Comparable {category} in our database average around ${avg_price:.2f}."

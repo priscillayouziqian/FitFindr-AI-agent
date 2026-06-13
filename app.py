@@ -72,6 +72,10 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
 
     listing_text += f"✨ {item.get('title', '').upper()} ✨\n\n💰 Price: {price_str}\n🏷️ Size: {item.get('size', 'N/A')}\n🛒 Platform: {item.get('platform')}\n\n{item.get('description')}"
     
+    # 追加价格评估信息 (Append price assessment if available)
+    if session.get("price_comparison"):
+        listing_text += f"\n\n{session['price_comparison']}"
+
     return listing_text, session.get("outfit_suggestion", ""), session.get("fit_card", "")
 
 
