@@ -88,7 +88,7 @@ def search_listings(
         # 如果提供了 size，且商品尺寸不匹配（忽略大小写），则跳过 (Skip if size doesn't match, case-insensitive)
         if size is not None:
             item_size = item.get("size")
-            if not item_size or item_size.lower() != size.lower():
+            if not item_size or size.lower() not in item_size.lower():
                 continue
 
         # 3. Score each remaining listing by keyword overlap with `description`.
@@ -160,7 +160,7 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
             f"Please give them 1-2 general styling ideas. What kind of vibe does it suit, and what general clothing pieces would pair well with it? Keep it friendly and conversational."
         )
     else:
-        wardrobe_str = "\n".join([f"- {w.get('name')} (Style: {', '.join(w.get('style_tags', []))})" for w in items])
+        wardrobe_str = "\n".join([f"- {w.get('name', w.get('title', 'Item'))} (Style: {', '.join(w.get('style_tags', []))})" for w in items])
         prompt = (
             f"The user is thinking about buying this secondhand item: {item_desc}.\n\n"
             f"Here is their current wardrobe:\n{wardrobe_str}\n\n"
@@ -218,7 +218,8 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
 
     # 准备新衣服的详细信息供模型使用 (Prepare the item details for the prompt)
     item_title = new_item.get('title', 'this item')
-    item_price = new_item.get('price', 'a great price')
+    price_raw = new_item.get('price')
+    item_price = f"{price_raw:.0f}" if isinstance(price_raw, (float, int)) else (price_raw or 'a great price')
     item_platform = new_item.get('platform', 'a secondhand shop')
 
     # 2. 构建提示词，明确社交媒体文案的要求 (Build the prompt for social media caption)

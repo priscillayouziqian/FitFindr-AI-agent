@@ -18,9 +18,9 @@ def test_search_empty_results():
     assert results == []   # empty list, no exception
 
 def test_search_price_filter():
-    results = search_listings("jacket", size=None, max_price=10)
-    # Ensure that if anything is returned, it respects the price ceiling
-    assert all(item["price"] <= 10 for item in results)
+    results = search_listings("jacket", size=None, max_price=50)
+    assert len(results) > 0  # 先确保有结果，防止 all([]) 默默通过测试 (Ensure results exist before checking price)
+    assert all(item["price"] <= 50 for item in results)
 
 # ── Tool 2 Tests ───────────────────────────────────────────────────────────
 
@@ -31,7 +31,7 @@ def test_suggest_outfit_with_wardrobe():
     
     result = suggest_outfit(new_item, wardrobe)
     assert isinstance(result, str)
-    assert len(result) > 0
+    assert len(result) > 20  # 确保返回的是长段的通用穿搭建议，而不是极短的异常字符串 (Ensure substantial string is returned)
 
 # ── Tool 3 Tests ───────────────────────────────────────────────────────────
 
@@ -60,4 +60,4 @@ def test_suggest_outfit_empty_wardrobe():
     
     result = suggest_outfit(new_item, wardrobe)
     assert isinstance(result, str)
-    assert len(result) > 0
+    assert len(result) > 20  # 确保返回的是长段的通用穿搭建议 (Ensure substantial string is returned)
