@@ -69,8 +69,54 @@ def search_listings(
 
     Before writing code, fill in the Tool 1 section of planning.md.
     """
-    # Replace this with your implementation
-    return []
+    # 1. Load all listings with load_listings().
+    # 加载所有二手商品数据 (Load all secondhand clothing data)
+    listings = load_listings()
+
+    # 提取搜索关键词并转为小写 (Extract keywords and convert to lowercase)
+    # 将用户的输入切分成单词集合，方便后续进行比对 (Split user input into a set of words for matching)
+    keywords = set(description.lower().split())
+
+    matched_listings = []
+
+    for item in listings:
+        # 2. Filter by max_price and size (if provided).
+        # 如果提供了 max_price，且商品价格高于该值，则跳过 (Skip if price exceeds max_price)
+        if max_price is not None and item.get("price", float('inf')) > max_price:
+            continue
+
+        # 如果提供了 size，且商品尺寸不匹配（忽略大小写），则跳过 (Skip if size doesn't match, case-insensitive)
+        if size is not None:
+            item_size = item.get("size")
+            if not item_size or item_size.lower() != size.lower():
+                continue
+
+        # 3. Score each remaining listing by keyword overlap with `description`.
+        # 根据关键词重合度给剩下的商品打分 (Score by keyword overlap)
+        # 将标题、描述和标签拼接在一起进行匹配 (Combine title, description, and style_tags to match)
+        tags_str = " ".join(item.get("style_tags", []))
+        item_text = f"{item.get('title', '')} {item.get('description', '')} {tags_str}".lower()
+        item_words = set(item_text.split())
+
+        # 计算匹配到的关键词数量 (Calculate the number of matched keywords)
+        score = len(keywords.intersection(item_words))
+
+        # 4. Drop any listings with a score of 0 (no relevant matches).
+        # 剔除得分为 0 的商品 (Drop items with score 0)
+        if score > 0:
+            item_with_score = item.copy()
+            item_with_score["_score"] = score
+            matched_listings.append(item_with_score)
+
+    # 5. Sort by score, highest first, and return the listing dicts.
+    # 按得分从高到低排序 (Sort by score descending)
+    matched_listings.sort(key=lambda x: x["_score"], reverse=True)
+
+    # 返回前清理掉用于排序的临时 "_score" 字段 (Clean up the temporary "_score" key before returning)
+    for item in matched_listings:
+        del item["_score"]
+
+    return matched_listings
 
 
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────
@@ -100,8 +146,41 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
 
     Before writing code, fill in the Tool 2 section of planning.md.
     """
-    # Replace this with your implementation
-    return ""
+    # 1. 检查用户的衣橱是否为空 (Check whether wardrobe['items'] is empty)
+    items = wardrobe.get("items", [])
+    
+    # 准备新衣服的描述信息 (Prepare the description of the thrifted item)
+    item_desc = f"{new_item.get('title')} ({new_item.get('description')})"
+
+    # 2 & 3. 动态构建 LLM 提示词 (Dynamically build the prompt based on wardrobe status)
+    if not items:
+        prompt = (
+            f"The user is thinking about buying this secondhand item: {item_desc}. "
+            f"Their wardrobe is currently empty in the system. "
+            f"Please give them 1-2 general styling ideas. What kind of vibe does it suit, and what general clothing pieces would pair well with it? Keep it friendly and conversational."
+        )
+    else:
+        wardrobe_str = "\n".join([f"- {w.get('name')} (Style: {', '.join(w.get('style_tags', []))})" for w in items])
+        prompt = (
+            f"The user is thinking about buying this secondhand item: {item_desc}.\n\n"
+            f"Here is their current wardrobe:\n{wardrobe_str}\n\n"
+            f"Suggest 1-2 complete outfits combining the new item with specific pieces from their wardrobe. Be explicit about which of their items you are using. Keep it friendly and conversational."
+        )
+
+    client = _get_groq_client()
+
+    # 4. 调用 LLM 并返回结果 (Call the LLM and return its response)
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile", # 使用官方推荐的最强模型 (Use the recommended 70b versatile model)
+        messages=[
+            {"role": "system", "content": "You are a helpful and trendy personal fashion stylist."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.7,
+        max_tokens=300
+    )
+
+    return response.choices[0].message.content
 
 
 # ── Tool 3: create_fit_card ───────────────────────────────────────────────────
@@ -133,5 +212,35 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
 
     Before writing code, fill in the Tool 3 section of planning.md.
     """
-    # Replace this with your implementation
-    return ""
+    # 1. 检查传入的搭配建议是否为空或只有空格 (Guard against an empty or whitespace-only outfit string)
+    if not outfit or not outfit.strip():
+        return "Unable to create fit card: outfit details missing."
+
+    # 准备新衣服的详细信息供模型使用 (Prepare the item details for the prompt)
+    item_title = new_item.get('title', 'this item')
+    item_price = new_item.get('price', 'a great price')
+    item_platform = new_item.get('platform', 'a secondhand shop')
+
+    # 2. 构建提示词，明确社交媒体文案的要求 (Build the prompt for social media caption)
+    prompt = (
+        f"I just bought '{item_title}' for ${item_price} on {item_platform}.\n\n"
+        f"Here is how I plan to style it: {outfit}\n\n"
+        f"Write a short, catchy, 2-4 sentence social media caption for this outfit. "
+        f"Make it feel casual and authentic. You MUST naturally mention the item name, price, and platform. "
+        f"Capture the specific vibe of the outfit. Do not include quotes around the caption."
+    )
+
+    client = _get_groq_client()
+
+    # 3. 调用 LLM 并返回结果 (Call the LLM and return its response)
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile", # 使用官方推荐的最强模型
+        messages=[
+            {"role": "system", "content": "You are a trendy fashion influencer writing authentic OOTD (Outfit of the Day) captions."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.85, # 使用较高的温度，确保每次生成的文案都有不同的创意 (Higher temp for creative variance)
+        max_tokens=150
+    )
+
+    return response.choices[0].message.content.strip()
