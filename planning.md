@@ -68,9 +68,9 @@ If the `outfit` string is missing or empty, it returns a descriptive error messa
 
 **How does your agent decide which tool to call next?**
 The agent uses a context-aware planning loop that responds dynamically to the output of each tool:
-1. It calls Tool 1 (`search_listings`). If the search returns an empty list, the agent decides to halt the workflow immediately and update the session with an error message.
-2. If matches are found, it passes the top item to Tool 2 (`suggest_outfit`). The agent adapts to the user's context here: if the user's wardrobe is empty, it dynamically alters the prompt strategy to offer general styling advice rather than failing.
-3. Finally, it calls Tool 3 (`create_fit_card`). If the outfit data is missing for any reason, the loop detects this and halts, preventing a crash.
+1. After calling Tool 1 (`search_listings`), it checks if `results` is empty. If yes, it sets `session["error"] = "Sorry, I couldn't find any items matching your filters."` and returns early. If no, it sets `session["selected_item"] = results[0]` and proceeds.
+2. It calls Tool 2 (`suggest_outfit`) using `session["selected_item"]` and `session["wardrobe"]`. If the wardrobe is empty, it dynamically alters the prompt strategy to offer general styling advice rather than failing, then stores the string in `session["outfit_suggestion"]`.
+3. Finally, it calls Tool 3 (`create_fit_card`) using the outfit string and selected item. If outfit data is missing, it sets an error and halts, otherwise it stores the output in `session["fit_card"]`.
 
 ---
 
@@ -86,7 +86,7 @@ Information flows sequentially: Tool 1's output is saved to `session["search_res
 
 | Tool | Failure mode | Agent response |
 |------|-------------|----------------|
-| search_listings | No results match the query | Sets `session["error"]` to a helpful message and returns the session early. Skips all subsequent steps. |
+| search_listings | No results match the query | Sets `session["error"]` to: "Sorry, I couldn't find any items matching your filters. Try adjusting your description or price!" and returns the session early. |
 | suggest_outfit | Wardrobe is empty | Prompts the LLM to generate generic styling advice instead of specific wardrobe combinations. Does not crash. |
 | create_fit_card | Outfit input is missing or incomplete | Returns a string indicating "Unable to create fit card due to missing outfit details." |
 
@@ -96,15 +96,18 @@ Information flows sequentially: Tool 1's output is saved to `session["search_res
 
 ```mermaid
 flowchart TD
-    U[User Query & Wardrobe] --> P[Planning Loop & Session State]
-    P -->|1. Parse & Call| T1[search_listings]
-    T1 -->|Matches Found| P
-    T1 -->|Empty List| E[Halt: Return Error Message]
-    P -->|2. Top Match & Wardrobe| T2[suggest_outfit]
-    T2 -->|Outfit String| P
-    P -->|3. Outfit String & Top Match| T3[create_fit_card]
-    T3 -->|Caption String| P
-    P -->|Final Session State| Output[Gradio UI]
+    U[User Query and Wardrobe] --> P[Planning Loop and Session State]
+    P -->|1. description, size, max_price| T1[search_listings]
+    T1 -->|results is empty| E[Halt: set session error and return]
+    T1 -->|results not empty| S1[Session: selected_item = results at index 0]
+    S1 -->|2. selected_item, wardrobe| T2[suggest_outfit]
+    T2 -->|wardrobe is empty| T2A[Alter prompt: return general styling advice]
+    T2A --> S2[Session: outfit_suggestion = result string]
+    T2 -->|wardrobe not empty| S2
+    S2 -->|3. outfit_suggestion, selected_item| T3[create_fit_card]
+    T3 -->|outfit string missing| E2[Halt: return error string]
+    T3 -->|outfit string present| S3[Session: fit_card = caption string]
+    S3 --> O[Return session to Gradio UI]
 ```
 
 ---
@@ -112,10 +115,10 @@ flowchart TD
 ## AI Tool Plan
 
 **Milestone 3 — Individual tool implementations:**
-I will use ChatGPT/Claude to implement `tools.py`. I will provide my `planning.md` tool specs. For `search_listings`, I will ask it to write the filter/scoring logic and test it. For `suggest_outfit`, I will explicitly ask it to handle the empty wardrobe edge case in the LLM prompt. I will test each tool in isolation using Python print statements before moving on.
+I will use ChatGPT/Claude to implement `tools.py`. I will provide my `planning.md` tool specs. To verify `search_listings`, I will run 3 test queries: one that should return results, one with a price too low to match anything, and one with a size that doesn't exist. I'll verify the empty-result case returns [] and not an error. For `suggest_outfit`, I'll test once with `get_example_wardrobe()` and once with `get_empty_wardrobe()`, and confirm the output string changes between the two.
 
 **Milestone 4 — Planning loop and state management:**
-I will use ChatGPT/Claude to implement `agent.py`. I will paste my "Planning Loop", "State Management", and `_new_session` dict structure. I will instruct it strictly to halt and return if `search_listings` returns an empty list. I'll test the final `run_agent` with both `get_example_wardrobe()` and `get_empty_wardrobe()` to ensure robust error handling.
+I will use ChatGPT/Claude to implement `agent.py`. I will paste my "Planning Loop", "State Management", and `_new_session` dict structure. To verify the logic, I will test the final `run_agent` with a query that returns no results to confirm it halts early with the correct error message. I will also run it with both `get_example_wardrobe()` and `get_empty_wardrobe()` to verify the exact error handling messages and state transitions.
 
 ---
 
