@@ -112,7 +112,10 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     description = query.lower()
     description = re.sub(r'(under\s*)?\$\s*\d+(?:\.\d{2})?', '', description)
     description = re.sub(r'(in\s*)?size\s+[a-zA-Z0-9/]+', '', description)
-    description = description.replace("looking for", "").replace("a ", "").strip(' ,.')
+    # 使用正则表达式安全地移除停用词 (Safely remove stop words using word boundaries)
+    description = re.sub(r'\b(looking for|i want|i need|a|an|the)\b', '', description)
+    # 将多个连续空格替换为单个空格 (Replace multiple spaces with a single space)
+    description = re.sub(r'\s+', ' ', description).strip(' ,.')
 
     session["parsed"] = {
         "description": description,
@@ -152,6 +155,7 @@ if __name__ == "__main__":
     if session["error"]:
         print(f"Error: {session['error']}")
     else:
+        print(f"Parsed: {session['parsed']}")
         print(f"Found: {session['selected_item']['title']}")
         print(f"\nOutfit: {session['outfit_suggestion']}")
         print(f"\nFit card: {session['fit_card']}")
