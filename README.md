@@ -54,11 +54,13 @@ State is managed using a single `session` dictionary that acts as the Single Sou
 
 Completing the `planning.md` before writing code was a game-changer. Drawing the Mermaid architecture diagram forced me to think about the "early return" branch (what happens if Tool 1 fails) *before* I even wrote the `agent.py` loop. Because I explicitly defined the failure modes on paper, my agent avoided the classic trap of passing `None` values into an LLM and crashing. It made writing the automated `pytest` cases incredibly straightforward since I already knew my expected edge cases.
 
+**One divergence from my original plan:** Initially, my unwritten assumption for query parsing was to use simple string replacements (like `.replace()`) to clean up the user's input. However, during implementation, I realized this was too fragile and could accidentally destroy valid words. I diverged from the basic parsing plan and implemented a more robust Regular Expression approach (`re.sub` with word boundaries `\b`) to safely remove stop-words and extract constraints. This made the agent's keyword matching significantly more accurate.
+
 ---
 
 ## 🤖 AI Usage
 
-I utilized AI (ChatGPT/Claude) strategically to help implement the code based on my strict specs:
+I utilized AI (gemini/Claude) strategically to help implement the code based on my strict specs:
 
 **Instance 1: Tool 1 Implementation & Refinement**
 * **Input**: I provided the Tool 1 block from my `planning.md` (inputs, outputs, keyword overlap scoring requirement) to the AI.
