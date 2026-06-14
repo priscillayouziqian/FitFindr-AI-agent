@@ -2,6 +2,10 @@
 
 FitFindr is an AI-powered personal shopping and styling agent. It takes a user's natural language request, searches a mock secondhand clothing database, suggests how to style the found item using the user's existing wardrobe, and generates a ready-to-post social media "fit card".
 
+## 🎥 Demo Video
+
+**[Watch the FitFindr Demo on YouTube](https://www.youtube.com/watch?v=kqseeRkUyUE)**
+
 ## 🛠️ Tool Inventory
 
 1. **`search_listings`**
@@ -66,7 +70,16 @@ I created a fifth tool (`get_current_trends`) that acts as a fashion oracle, fee
 
 ---
 
-## 📝 Spec Reflection
+## 🚀 Engineering Optimizations
+
+Based on best practices for production-grade agent systems, I implemented two key architectural improvements:
+
+1. **I/O Caching for Performance**: The agent originally read the `listings.json` file from disk multiple times per interaction (once for `search_listings` and again for `compare_price`). I optimized this by wrapping the data loader in Python's `@functools.lru_cache(maxsize=1)`. Now, the dataset is loaded into memory exactly once, drastically reducing repetitive disk I/O and speeding up the agent's execution time.
+2. **Deep Integration Testing**: While unit testing individual tools is essential, bugs in agentic systems often hide in the orchestration logic. I added a dedicated `test_agent.py` test suite that executes integration tests against the full `run_agent()` planning loop. These tests supply controlled inputs and assert directly on the `session` state to guarantee that emergent behaviors—like the retry fallback mechanism, early halting on zero results, and style memory persistence—work flawlessly end-to-end.
+
+---
+
+##  Spec Reflection
 
 Completing the `planning.md` before writing code was a game-changer. Drawing the Mermaid architecture diagram forced me to think about the "early return" branch (what happens if Tool 1 fails) *before* I even wrote the `agent.py` loop. Because I explicitly defined the failure modes on paper, my agent avoided the classic trap of passing `None` values into an LLM and crashing. It made writing the automated `pytest` cases incredibly straightforward since I already knew my expected edge cases.
 
@@ -101,4 +114,3 @@ Load an example wardrobe with:
 from utils.data_loader import get_example_wardrobe
 wardrobe = get_example_wardrobe()
 ```
-
