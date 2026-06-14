@@ -71,6 +71,10 @@ def handle_query(user_query: str, wardrobe_choice: str, style_state: list) -> tu
     if session["style_profile"]:
         listing_text += f"🧠 **Style Memory Active:** {', '.join(session['style_profile']).title()}\n\n"
 
+    # 提示应用了流行趋势 (Display active trends)
+    if session.get("trends"):
+        listing_text += f"📈 **Trending Now:** {session['trends']}\n\n"
+
     # 如果触发了重试逻辑，在开头加上提示语
     if session.get("fallback_message"):
         listing_text += f"⚠️ **Note:** {session['fallback_message']}\n\n"

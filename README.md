@@ -61,6 +61,9 @@ I implemented a fourth tool (`compare_price`) that evaluates whether the selecte
 ### 3. Style Profile Memory
 The agent acts as a true personal shopper by remembering the user's style preferences across multiple interactions. If a user mentions styles like "y2k", "grunge", or "minimal" in their query, the agent extracts and saves them to a `style_profile` list in the session. For subsequent queries, these saved styles are automatically appended to the search keywords to boost the relevance score of matching items, even if the user doesn't explicitly mention the styles again. In the Gradio UI, this memory is preserved across queries without re-entry using `gr.State()`.
 
+### 4. Trend Awareness Tool
+I created a fifth tool (`get_current_trends`) that acts as a fashion oracle, feeding the agent real-time context about what's currently in style (mocked with data like "Y2K revival, chunky footwear"). This string is stored in the session and passed directly into the LLM prompt for `suggest_outfit`. As a result, the outfit recommendations are not just based on the user's wardrobe, but are visibly influenced by current fashion trends, providing a highly personalized and up-to-date styling experience.
+
 ---
 
 ## 📝 Spec Reflection

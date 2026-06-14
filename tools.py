@@ -121,7 +121,7 @@ def search_listings(
 
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────
 
-def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
+def suggest_outfit(new_item: dict, wardrobe: dict, trends: str = None) -> str:
     """
     Given a thrifted item and the user's wardrobe, suggest 1–2 complete outfits.
 
@@ -153,18 +153,20 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
     item_desc = f"{new_item.get('title')} ({new_item.get('description')})"
 
     # 2 & 3. 动态构建 LLM 提示词 (Dynamically build the prompt based on wardrobe status)
+    trend_context = f"\n\nPlease incorporate these current fashion trends into your styling advice if they fit the item: {trends}" if trends else ""
+
     if not items:
         prompt = (
             f"The user is thinking about buying this secondhand item: {item_desc}. "
             f"Their wardrobe is currently empty in the system. "
-            f"Please give them 1-2 general styling ideas. What kind of vibe does it suit, and what general clothing pieces would pair well with it? Keep it friendly and conversational."
+            f"Please give them 1-2 general styling ideas. What kind of vibe does it suit, and what general clothing pieces would pair well with it?{trend_context} Keep it friendly and conversational."
         )
     else:
         wardrobe_str = "\n".join([f"- {w.get('name', w.get('title', 'Item'))} (Style: {', '.join(w.get('style_tags', []))})" for w in items])
         prompt = (
             f"The user is thinking about buying this secondhand item: {item_desc}.\n\n"
             f"Here is their current wardrobe:\n{wardrobe_str}\n\n"
-            f"Suggest 1-2 complete outfits combining the new item with specific pieces from their wardrobe. Be explicit about which of their items you are using. Keep it friendly and conversational."
+            f"Suggest 1-2 complete outfits combining the new item with specific pieces from their wardrobe.{trend_context} Be explicit about which of their items you are using. Keep it friendly and conversational."
         )
 
     client = _get_groq_client()
@@ -279,3 +281,13 @@ def compare_price(new_item: dict) -> str:
         assessment = "a fair price (around market average)."
 
     return f"📊 **Price Assessment:** At ${item_price:.2f}, this is {assessment} Comparable {category} in our database average around ${avg_price:.2f}."
+
+# ── Tool 5: get_current_trends (Bonus Feature) ────────────────────────────────
+
+def get_current_trends() -> str:
+    """
+    Returns a string containing current fashion trends. 
+    In a real app, this could fetch data from a live API, Pinterest RSS, or a fashion blog.
+    Here we use a mock string for demonstration.
+    """
+    return "Y2K revival, oversized/baggy silhouettes, chunky footwear, and monochromatic earth tones."
