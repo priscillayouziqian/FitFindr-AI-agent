@@ -102,10 +102,3 @@ from utils.data_loader import get_example_wardrobe
 wardrobe = get_example_wardrobe()
 ```
 
-## Where to Start
-
-1. **Read `planning.md` and fill it out before writing any code.**
-2. Verify the data loads correctly by running `python utils/data_loader.py`.
-3. Build and test each tool individually before connecting them through your planning loop.
-
-Your implementation files go in this same directory. There's no required file structure for your agent code — organize it however makes sense for your design.
