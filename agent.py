@@ -42,6 +42,7 @@ def _new_session(query: str, wardrobe: dict) -> dict:
         "price_comparison": None,    # string returned by compare_price
         "wardrobe": wardrobe,        # user's wardrobe dict
         "outfit_suggestion": None,   # string returned by suggest_outfit
+        "style_profile": [],         # user's remembered style preferences
         "fit_card": None,            # string returned by create_fit_card
         "fallback_message": None,    # message explaining relaxed constraints
         "error": None,               # set if the interaction ended early
@@ -50,7 +51,7 @@ def _new_session(query: str, wardrobe: dict) -> dict:
 
 # ── planning loop ─────────────────────────────────────────────────────────────
 
-def run_agent(query: str, wardrobe: dict) -> dict:
+def run_agent(query: str, wardrobe: dict, style_profile: list = None) -> dict:
     """
     Main agent entry point. Runs the FitFindr planning loop for a single
     user interaction and returns the completed session dict.
@@ -96,6 +97,9 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     of planning.md — your implementation should match what you described there.
     """
     session = _new_session(query, wardrobe)
+    
+    if style_profile is not None:
+        session["style_profile"] = style_profile.copy()
 
     # Step 2: 解析用户的查询 (Parse the user's query using Regular Expressions)
     # 提取最高价格 (Extract max_price, e.g., "$30", "under $30")
@@ -119,19 +123,30 @@ def run_agent(query: str, wardrobe: dict) -> dict:
     # 将多个连续空格替换为单个空格 (Replace multiple spaces with a single space)
     description = re.sub(r'\s+', ' ', description).strip(' ,.')
 
+    # 提取并保存风格偏好记忆 (Extract and save style profile memory)
+    known_styles = ["vintage", "y2k", "grunge", "cottagecore", "streetwear", "minimal", "goth", "athletic", "preppy"]
+    for style in known_styles:
+        if style in query.lower() and style not in session["style_profile"]:
+            session["style_profile"].append(style)
+
     session["parsed"] = {
         "description": description,
         "size": size,
         "max_price": max_price
     }
 
+    # 将记忆的风格加入搜索词中，提升相关商品的匹配得分 (Apply memory to search)
+    search_query = description
+    if session["style_profile"]:
+        search_query += " " + " ".join(session["style_profile"])
+
     # Step 3: 调用 Tool 1 (Call search_listings with parsed parameters)
-    results = search_listings(description=description, size=size, max_price=max_price)
+    results = search_listings(description=search_query, size=size, max_price=max_price)
 
     if not results:
         # 放宽条件重试逻辑 (Retry Logic with Fallback)
         if max_price is not None or size is not None:
-            results = search_listings(description=description, size=None, max_price=None)
+            results = search_listings(description=search_query, size=None, max_price=None)
             if results:
                 session["fallback_message"] = "I couldn't find an exact match for your price/size, but I removed those filters to find this for you!"
 
@@ -188,3 +203,19 @@ if __name__ == "__main__":
     print(f"Fallback message: {session3.get('fallback_message')}")
     if session3.get("selected_item"):
         print(f"Found: {session3['selected_item']['title']} (Price: ${session3['selected_item']['price']})")
+
+    print("\n\n=== Style Memory path (Interaction 1) ===\n")
+    session4 = run_agent(
+        query="I really love y2k and grunge styles! Find me a baby tee.",
+        wardrobe=get_example_wardrobe(),
+    )
+    print(f"Memory Saved: {session4['style_profile']}")
+    
+    print("\n=== Style Memory path (Interaction 2) ===\n")
+    session5 = run_agent(
+        query="Find me some boots.", # No styles mentioned here!
+        wardrobe=get_example_wardrobe(),
+        style_profile=session4['style_profile']
+    )
+    print(f"Memory Used: {session5['style_profile']}")
+    print(f"Found: {session5['selected_item']['title']} (Notice how it found boots matching the saved styles!)")

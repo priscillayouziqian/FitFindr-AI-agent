@@ -58,6 +58,9 @@ If a user's initial search yields zero results because their constraints (`max_p
 ### 2. Price Comparison Tool
 I implemented a fourth tool (`compare_price`) that evaluates whether the selected item is a good deal. It dynamically filters the mock dataset for all other items in the same `category` (excluding the item itself) and calculates their average price. It then compares the selected item's price against this market average and returns a transparent assessment (e.g., "an absolute steal", "a fair price", or "priced slightly above average") along with the mathematical reasoning. This analysis is prominently appended to the UI's listing panel.
 
+### 3. Style Profile Memory
+The agent acts as a true personal shopper by remembering the user's style preferences across multiple interactions. If a user mentions styles like "y2k", "grunge", or "minimal" in their query, the agent extracts and saves them to a `style_profile` list in the session. For subsequent queries, these saved styles are automatically appended to the search keywords to boost the relevance score of matching items, even if the user doesn't explicitly mention the styles again. In the Gradio UI, this memory is preserved across queries without re-entry using `gr.State()`.
+
 ---
 
 ## 📝 Spec Reflection

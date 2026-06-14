@@ -20,7 +20,7 @@ from utils.data_loader import get_example_wardrobe, get_empty_wardrobe
 
 # ── query handler ─────────────────────────────────────────────────────────────
 
-def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
+def handle_query(user_query: str, wardrobe_choice: str, style_state: list) -> tuple[str, str, str, list]:
     """
     Called by Gradio when the user submits a query.
 
@@ -45,7 +45,7 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
     """
     # 1. 拦截空查询 (Guard against an empty query)
     if not user_query or not user_query.strip():
-        return "⚠️ Please enter a description of what you are looking for.", "", ""
+        return "⚠️ Please enter a description of what you are looking for.", "", "", style_state
 
     # 2. 根据用户选择加载衣橱 (Select the wardrobe based on wardrobe_choice)
     if wardrobe_choice == "Example wardrobe":
@@ -54,11 +54,11 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
         wardrobe = get_empty_wardrobe()
 
     # 3. 呼叫 Agent 大脑！(Call run_agent() with the query and selected wardrobe)
-    session = run_agent(query=user_query, wardrobe=wardrobe)
+    session = run_agent(query=user_query, wardrobe=wardrobe, style_profile=style_state)
 
     # 4. 如果发生错误，只在第一个面板显示错误信息 (Handle early termination / error)
     if session.get("error"):
-        return f"❌ {session['error']}", "", ""
+        return f"❌ {session['error']}", "", "", style_state
 
     # 5. 格式化商品信息并返回三个面板的内容 (Format the successful output)
     item = session["selected_item"]
@@ -66,6 +66,11 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
     price_str = f"${price_raw:.2f}" if isinstance(price_raw, (float, int)) else price_raw
     
     listing_text = ""
+    
+    # 显示应用的风格记忆 (Display active style memory)
+    if session["style_profile"]:
+        listing_text += f"🧠 **Style Memory Active:** {', '.join(session['style_profile']).title()}\n\n"
+
     # 如果触发了重试逻辑，在开头加上提示语
     if session.get("fallback_message"):
         listing_text += f"⚠️ **Note:** {session['fallback_message']}\n\n"
@@ -76,7 +81,7 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
     if session.get("price_comparison"):
         listing_text += f"\n\n{session['price_comparison']}"
 
-    return listing_text, session.get("outfit_suggestion", ""), session.get("fit_card", "")
+    return listing_text, session.get("outfit_suggestion", ""), session.get("fit_card", ""), session["style_profile"]
 
 
 # ── interface ─────────────────────────────────────────────────────────────────
@@ -91,6 +96,7 @@ EXAMPLE_QUERIES = [
 
 def build_interface():
     with gr.Blocks(title="FitFindr") as demo:
+        style_state = gr.State([])
         gr.Markdown("""
 # FitFindr 🛍️
 Find secondhand pieces and get outfit ideas based on your wardrobe.
@@ -138,13 +144,13 @@ Describe what you're looking for — include size and price if you want to filte
 
         submit_btn.click(
             fn=handle_query,
-            inputs=[query_input, wardrobe_choice],
-            outputs=[listing_output, outfit_output, fitcard_output],
+            inputs=[query_input, wardrobe_choice, style_state],
+            outputs=[listing_output, outfit_output, fitcard_output, style_state],
         )
         query_input.submit(
             fn=handle_query,
-            inputs=[query_input, wardrobe_choice],
-            outputs=[listing_output, outfit_output, fitcard_output],
+            inputs=[query_input, wardrobe_choice, style_state],
+            outputs=[listing_output, outfit_output, fitcard_output, style_state],
         )
 
     return demo
