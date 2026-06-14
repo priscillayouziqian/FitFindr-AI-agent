@@ -13,6 +13,7 @@ Tools:
 """
 
 import os
+from functools import lru_cache
 
 from dotenv import load_dotenv
 from groq import Groq
@@ -32,6 +33,14 @@ def _get_groq_client():
             "GROQ_API_KEY not set. Add it to a .env file in the project root."
         )
     return Groq(api_key=api_key)
+
+
+# ── Data Caching ──────────────────────────────────────────────────────────────
+
+@lru_cache(maxsize=1)
+def _get_cached_listings():
+    """Load listings once and cache the result in memory for efficiency."""
+    return load_listings()
 
 
 # ── Tool 1: search_listings ───────────────────────────────────────────────────
@@ -71,7 +80,7 @@ def search_listings(
     """
     # 1. Load all listings with load_listings().
     # 加载所有二手商品数据 (Load all secondhand clothing data)
-    listings = load_listings()
+    listings = _get_cached_listings()
 
     # 提取搜索关键词并转为小写 (Extract keywords and convert to lowercase)
     # 将用户的输入切分成单词集合，方便后续进行比对 (Split user input into a set of words for matching)
@@ -256,7 +265,7 @@ def compare_price(new_item: dict) -> str:
     Compare the price of the selected item against similar items in the dataset
     to assess if it's a good deal.
     """
-    listings = load_listings()
+    listings = _get_cached_listings()
     category = new_item.get("category")
     item_id = new_item.get("id")
     item_price = new_item.get("price", 0)
